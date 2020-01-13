@@ -223,7 +223,7 @@ do_generate(HistoryLogDir, AbsHtmlFile, RelHtmlFile,
         fun(Section, HostTables, ConfigTables) ->
                 header(Section, AllRuns,
                        HostTables, ConfigTables, HtmlDir,
-                       RelHtmlFile, Errors, MultiBranch)
+                       RelHtmlFile, Errors)
         end,
     Footer =
         [
@@ -236,9 +236,9 @@ do_generate(HistoryLogDir, AbsHtmlFile, RelHtmlFile,
             SplitBranches = keysplit(#run.branch, AllRuns),
             LatestRuns = latest_runs(SplitBranches),
             HostTables = [],
-            MultiHosts = true,
+            _MultiHosts = true,
             ConfigTables = [],
-            MultiConfig = false,
+            _MultiConfig = false,
 
             %% Overview
             LatestSlogan = "Latest run on each branch",
@@ -254,28 +254,28 @@ do_generate(HistoryLogDir, AbsHtmlFile, RelHtmlFile,
 
             %% Overview
             LatestSlogan =
-                case SplitHosts of
-                    [_] -> "Latest run";
-                    _   -> "Latest run on each host"
+                case MultiHosts of
+                    false -> "Latest run";
+                    true  -> "Latest run on each host"
                 end,
             {TableAll, TableAllIoList} =
                 table_all(HistoryLogDir, "All", AllRuns, AbsHtmlFile,
-                          MultiBranch, MultiHosts, MultiConfig),
+                          MultiBranch),
             FailedRuns = extract_failed_runs(TableAll),
 
             HostTables =
                 table_hosts(HistoryLogDir, SplitHosts, AbsHtmlFile,
-                            MultiBranch, MultiHosts, MultiConfig),
+                            MultiBranch, MultiHosts),
             ConfigTables =
                 table_configs(HistoryLogDir, SplitConfigs, AbsHtmlFile,
-                              MultiBranch, MultiHosts, MultiConfig),
+                              MultiBranch, MultiConfig),
 
             %% Still failing
             StillFailingIoList =
                 [
                  HeaderFun("current failures", HostTables, ConfigTables),
                  table_still_failing(HistoryLogDir, FailedRuns, AbsHtmlFile,
-                                     MultiBranch, MultiHosts, MultiConfig),
+                                     MultiBranch),
                  Footer
                 ],
             StillFailingSuffix =
@@ -305,8 +305,7 @@ do_generate(HistoryLogDir, AbsHtmlFile, RelHtmlFile,
         [
          HeaderFun("overview", HostTables, ConfigTables),
          table_latest(HistoryLogDir, LatestRuns, ConfigTables,
-                      AbsHtmlFile, MultiBranch, LatestSlogan,
-                      MultiHosts, MultiConfig),
+                      AbsHtmlFile, MultiBranch, LatestSlogan),
          TableAllIoList,
          Footer
         ],
@@ -365,7 +364,7 @@ latest_runs(SplitRuns) ->
         lists:member(Run#run.id, Ids)].
 
 header(Section, AllRuns, HostTables, ConfigTables,
-       HtmlDir, HtmlFile, Errors, MultiBranch) ->
+       HtmlDir, HtmlFile, Errors) ->
     Dir = filename:basename(filename:dirname(HtmlFile)),
     case lists:keysort(#run.repos_rev, AllRuns) of
         [] ->
@@ -419,83 +418,43 @@ header(Section, AllRuns, HostTables, ConfigTables,
     FailingLinks =
         [
          "</h3>\n\n",
-         case MultiBranch of
-             true ->
-                 [
-                  "<h3>",
-                  "Multiple branches. "
-                  "No still failing test cases page generated.",
-                  "</h3>\n\n"
-                 ];
-             false ->
-                 [
-                  "<h3>",
-                  html_suffix_href(HtmlFile,"","#failing_suites",
-                                   "Still failing test suites",
-                                   ?STILL_FAILING_SUFFIX),
-                  "</h3>\n\n",
-                  "<h3>",
-                  html_suffix_href(HtmlFile,"","#failing_cases",
-                                   "Still failing test cases",
-                                   ?STILL_FAILING_SUFFIX),
-                  "</h3>\n\n"
-                 ]
-         end
+         "<h3>",
+         html_suffix_href(HtmlFile,"","#failing_suites",
+                          "Still failing test suites",
+                          ?STILL_FAILING_SUFFIX),
+         "</h3>\n\n",
+         "<h3>",
+         html_suffix_href(HtmlFile,"","#failing_cases",
+                          "Still failing test cases",
+                          ?STILL_FAILING_SUFFIX),
+         "</h3>\n\n"
         ],
-    ConfigSection =
-        [
-         if
-             ConfigTables =:= [] ->
-                 "<h3>Only one config. No config page generated.</h3>\n";
-             true ->
+    HostConfigFun =
+        fun(Slogan, Suffix, Tables) ->
+                [
+                 "<h3>",
+                 html_suffix_href(HtmlFile,"","#content",
+                                  Slogan, Suffix),
+                 "</h3>\n",
+                 "  <table border=\"1\">\n",
+                 "    <tr>\n",
                  [
-                  "<h3>",
-                  html_suffix_href(HtmlFile,"","#content",
-                                   "Configurations", ?CONFIG_SUFFIX),
-                  "</h3>\n",
-                  "  <table border=\"1\">\n",
-                  "    <tr>\n",
-                  [
-                   html_suffix_href_td(HtmlFile, ConfigName,
-                                       ConfigRes, ?CONFIG_SUFFIX) ||
-                      #table{name=ConfigName, res=ConfigRes} <- ConfigTables
-                  ],
-                  "    </tr>\n",
-                  "  </table>\n"
-                 ]
-         end
-        ],
-    HostSection =
-        [
-         if
-             HostTables =:= [] ->
-                 "<h3>Only one host. No host page generated.</h3>\n";
-             true ->
-                 [
-                  "<h3>",
-                  html_suffix_href(HtmlFile,"", "#content",
-                                   "Hosts", ?HOST_SUFFIX),
-                  "</h3>\n",
-                  "  <table border=\"1\">\n",
-                  "    <tr>\n",
-                  [
-                   html_suffix_href_td(HtmlFile, Host, HostRes, ?HOST_SUFFIX) ||
-                      #table{name=Host, res=HostRes} <- HostTables
-                  ],
-                  "    </tr>\n",
-                  "  </table>\n"
-                  "<br/><hr/>\n"
-                 ]
-         end
-        ],
+                  html_suffix_href_td(HtmlFile, Name,
+                                      Res, Suffix) ||
+                     #table{name=Name, res=Res} <- Tables
+                 ],
+                 "    </tr>\n",
+                 "  </table>\n"
+                ]
+        end,
     IoList =
         [
          Top,
          legend(),
          OverviewLink,
          FailingLinks,
-         ConfigSection,
-         HostSection
+         HostConfigFun("Configurations", ?CONFIG_SUFFIX, ConfigTables),
+         HostConfigFun("Hosts", ?HOST_SUFFIX, HostTables)
         ],
     ?l2b(IoList).
 
@@ -542,8 +501,7 @@ legend() ->
     ].
 
 table_latest(HistoryLogDir, LatestRuns, ConfigTables,
-             HtmlFile, MultiBranch, Slogan,
-             MultiHosts, MultiConfig) ->
+             HtmlFile, MultiBranch, Slogan) ->
     {Slogan2, IoList} =
         if
             ConfigTables =:= [], not MultiBranch ->
@@ -553,8 +511,7 @@ table_latest(HistoryLogDir, LatestRuns, ConfigTables,
                 Select = select_worst,
                 T = gen_table(HistoryLogDir, "Latest", "All test suites",
                               LatestRuns, HtmlFile, MultiBranch,
-                              Suppress, Select,
-                              MultiHosts, MultiConfig),
+                              Suppress, Select),
                 {Slogan, T#table.iolist}
         end,
     [
@@ -563,14 +520,12 @@ table_latest(HistoryLogDir, LatestRuns, ConfigTables,
      IoList
     ].
 
-table_all(HistoryLogDir, Name, AllRuns, HtmlFile,
-          MultiBranch, MultiHosts, MultiConfig) ->
+table_all(HistoryLogDir, Name, AllRuns, HtmlFile, MultiBranch) ->
     Suppress = suppress_none,
     Select = select_latest,
     T = gen_table(HistoryLogDir, Name, "All test suites",
                   AllRuns, HtmlFile, MultiBranch,
-                  Suppress, Select,
-                  MultiHosts, MultiConfig),
+                  Suppress, Select),
     IoList =
         [
          lux_html_utils:html_anchor("h3", "", "all_runs", "All runs"),
@@ -578,19 +533,16 @@ table_all(HistoryLogDir, Name, AllRuns, HtmlFile,
         ],
     {T, IoList}.
 
-table_still_failing(HistoryLogDir, SuiteRuns, HtmlFile,
-                    MultiBranch, MultiHosts, MultiConfig) ->
+table_still_failing(HistoryLogDir, SuiteRuns, HtmlFile, MultiBranch) ->
     Suppress = suppress_any_success,
     Select = select_latest,
     TS = gen_table(HistoryLogDir, "All", "Still failing test suites",
                    SuiteRuns, HtmlFile, MultiBranch,
-                   Suppress, Select,
-                   MultiHosts, MultiConfig),
+                   Suppress, Select),
     CaseRuns = extract_test_case_runs(SuiteRuns),
     TC = gen_table(HistoryLogDir, "All", "Still failing test cases",
                    CaseRuns, HtmlFile, MultiBranch,
-                   Suppress, Select,
-                   MultiHosts, MultiConfig),
+                   Suppress, Select),
     [
      "<a name=\"content\"/>\n",
      still_failing_header(TS, "suites"),
@@ -662,44 +614,38 @@ still_failing_header(#table{iolist = IoList}, Type) ->
     ].
 
 table_hosts(_HistoryLogDir, _SplitHosts, _HtmlFile,
-            _MultiBranch, false, _MultiConfig) ->
+            _MultiBranch, false) ->
     [];
 table_hosts(HistoryLogDir, SplitHosts, HtmlFile,
-            MultiBranch, true=MultiHosts, MultiConfig) ->
+            MultiBranch, true=_MultiHosts) ->
     [
      double_table(HistoryLogDir,
                   Host,
                   ["Host: ", Host, " (", (hd(Runs))#run.config_name, ")"],
                   Runs,
                   HtmlFile,
-                  MultiBranch,
-                  MultiHosts,
-                  MultiConfig) ||
+                  MultiBranch) ||
         {Host, Runs} <- SplitHosts
     ].
 
 table_configs(_HistoryLogDir, _SplitConfigs, _HtmlFile,
-              _MultiBranch, _MultiHosts, false) ->
+              _MultiBranch, false=_) ->
     [];
 table_configs(HistoryLogDir, SplitConfigs, HtmlFile,
-              MultiBranch, MultiHosts, true=MultiConfig) ->
+              MultiBranch, true=_MultiConfig) ->
     [
      double_table(HistoryLogDir,
                   ConfigName,
                   "Config: " ++ ConfigName,
                   Runs,
                   HtmlFile,
-                  MultiBranch,
-                  MultiHosts,
-                  MultiConfig) ||
+                  MultiBranch) ||
         {ConfigName, Runs} <- SplitConfigs
     ].
 
-double_table(HistoryLogDir, Name, Label, AllRuns, HtmlFile,
-             MultiBranch, MultiHosts, MultiConfig) ->
+double_table(HistoryLogDir, Name, Label, AllRuns, HtmlFile, MultiBranch) ->
     {TableAll, TableAllIoList} =
-        table_all(HistoryLogDir, "All", AllRuns, HtmlFile,
-                  MultiBranch, MultiHosts, MultiConfig),
+        table_all(HistoryLogDir, "All", AllRuns, HtmlFile, MultiBranch),
     case MultiBranch of
         true ->
             TableFailedCasesIoList = [];
@@ -711,8 +657,7 @@ double_table(HistoryLogDir, Name, Label, AllRuns, HtmlFile,
             TableFailedCases =
                 gen_table(HistoryLogDir, Name, "Still failing test cases",
                           Details, HtmlFile, MultiBranch,
-                          Suppress, Select,
-                          MultiHosts, MultiConfig),
+                          Suppress, Select),
             TableFailedCasesIoList =
                 [
                  "\n<br/>\n",
@@ -732,8 +677,7 @@ double_table(HistoryLogDir, Name, Label, AllRuns, HtmlFile,
 %% Suppress :: suppress_any_success | suppress_none
 %% Select   :: select_worst | select_latest
 gen_table(HistoryLogDir, Name, Grain, Runs, HtmlFile,
-          MultiBranch, Suppress, Select,
-          MultiHosts, MultiConfig) ->
+          MultiBranch, Suppress, Select) ->
     io:format("\nTABLE ~p \t~p #~p\n", [time(), Grain, length(Runs)]),
     %% Ensure order of the runs
     SplitTests = keysplit(#run.test, Runs, fun compare_run/2),
@@ -763,7 +707,7 @@ gen_table(HistoryLogDir, Name, Grain, Runs, HtmlFile,
     %% Generate header rows
     RowsIoList = [R#row.iolist || R <- SortedRows],
     RunInfoIoList = lists:map(fun run_info/1, SplitIds),
-    HostInfo = fun(Rs, HF) -> host_info(Rs, HF, MultiHosts, MultiConfig) end,
+    HostInfo = fun(Rs, HF) -> host_info(Rs, HF) end,
     HostTuple = lists:mapfoldl(HostInfo, HtmlFile, SplitIds),
     HostIoList = element(1, HostTuple),
     CntTuple = lists:mapfoldl(fun run_cnt/2, {1,Rows}, SplitIds),
@@ -815,26 +759,15 @@ run_info({Id, [#run{start_time=Time, branch=RunBranch, repos_rev=Rev} | _]}) ->
      "</td>\n"
     ].
 
-host_info({_, [#run{hostname=HN, config_name=CN} | _]}, HtmlFile,
-          MultiHosts, MultiConfig) ->
+host_info({_, [#run{hostname=HN, config_name=CN} | _]}, HtmlFile) ->
     Html =
         [
          "      <td>",
          "<strong>",
-         case MultiHosts of
-             true ->
-                 html_suffix_href(HtmlFile, "", "#" ++ HN, HN, ?HOST_SUFFIX);
-             false ->
-                 HN
-         end,
+         html_suffix_href(HtmlFile, "", "#" ++ HN, HN, ?HOST_SUFFIX),
          "</strong>",
          "<br/>",
-         case MultiConfig of
-             true ->
-                 html_suffix_href(HtmlFile, "", "#" ++ CN, CN, ?CONFIG_SUFFIX);
-             false ->
-                 CN
-         end,
+         html_suffix_href(HtmlFile, "", "#" ++ CN, CN, ?CONFIG_SUFFIX),
          "</td>\n"
         ],
     {Html, HtmlFile}.
