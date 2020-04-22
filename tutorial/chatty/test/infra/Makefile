@@ -1,4 +1,4 @@
-.PHONY: all build test history clean history_demo info
+.PHONY: all build test history clean info
 
 TIMESTAMP=$(shell date +"%F_%T")
 GITHASH=$(shell git rev-parse --verify --short HEAD)
@@ -20,17 +20,26 @@ history:
 clean:
 	rm -rf lux_logs lux_history* chatty_*.log erl_crash.dump *~
 
-history_demo:
-	for i in 0 1 2 3 4 5 6 7 8 9; do \
-		rev="2019-05-14_21:5$$i:04_$(GITHASH)$$i" ; \
-		opts="--revision=$$rev --suite=demo --config_dir=$(TOPDIR)/support/luxcfg" ; \
-		lux $$opts --hostname=sunny --config_name=SunOS-i86pc .; \
-		lux $$opts --hostname=netty --config_name=NetBSD-macppc .; \
-		sleep 1; \
-	done
-
 info:
 	@echo "TOPDIR=$(TOPDIR)"
 	@echo "TIMESTAMP=$(TIMESTAMP)"
 	@echo "GITHASH=$(GITHASH)"
 	@echo "LUXOPTS=$(LUXOPTS)"
+
+# Demo targets
+
+.PHONY: history_demo history_demo_runs
+
+history_demo: clean history_demo_runs history
+	@echo
+	@echo open lux_history.html
+
+history_demo_runs:
+	for i in 0 1 2 3 4 5 6 7 8 9; do \
+		rev="2019-05-14_21:5$$i:04_$(GITHASH)$$i" ; \
+		opts="--revision=$$rev --suite=demo --config_dir=$(TOPDIR)/support/luxcfg" ; \
+		lux $$opts --hostname=sunny --config_name=SunOS-i86pc .; \
+		lux $$opts --hostname=cloudy --config_name=SunOS-i86pc .; \
+		lux $$opts --hostname=netty --config_name=NetBSD-macppc .; \
+		sleep 1; \
+	done

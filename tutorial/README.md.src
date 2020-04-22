@@ -170,7 +170,7 @@ History of test run results
 
 #eval-silent rm -rf tutorial/chatty/test/infra/lux_logs
 
-#eval-silent cd tutorial/chatty/test/infra && make history_demo
+#eval-silent cd tutorial/chatty/test/infra && make history_demo_runs
 
 #eval-include cd tutorial/chatty/test/infra && lux --history history_logs lux_logs
 
