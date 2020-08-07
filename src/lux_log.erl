@@ -863,13 +863,30 @@ parse_other_file(EndTag, SubFile, Events, Acc) when is_binary(SubFile) ->
 
 extract_timers(Events) ->
     {_SendEvent, Case, RevTimers} =
-        do_extract_timers(Events, undefined, undefined, [<<>>], [], []),
+        do_extract_timers(Events, undefined, undefined, undefined,
+                          [<<>>], [], []),
     Timers = lists:reverse([Case | RevTimers]),
     %% io:format("\ntimers: ~p\n", [Timers]),
     Timers.
 
-do_extract_timers([E | Events], Send, Case, Calls, Nums, Acc) ->
+do_extract_timers([E | Events], Start, Send, Case, Calls, Nums, Acc) ->
     case E of
+        #event{op = <<"start_time">>} ->
+            NewStart = binary:split(?l2b(E#event.data), <<" ">>, [global]),
+            do_extract_timers(Events, NewStart, Send, Case, Calls, Nums, Acc);
+        #event{op = <<"end_time">>} ->
+            if
+                Start =/= undefined,
+                Case#timer.max_time =:= infinity,
+                Case#timer.elapsed =:= undefined ->
+                    %% "2020-08-06 16:09:32.872350"
+                    End = binary:split(?l2b(E#event.data), <<" ">>, [global]),
+                        
+                    split(Case#timer.data)
+io:format("\nSSS ~p\n", [Start]),
+io:format("\nEEE ~p\n", [E]),
+io:format("\nCCC ~p\n", [Case]),
+            do_extract_timers(Events, Start, Send, Case, Calls, Nums, Acc);
         #event{op = <<"case_timeout">>} ->
             LeftMillis =
                 case binary:split(?l2b(E#event.data), <<" ">>, [global]) of
@@ -877,7 +894,9 @@ do_extract_timers([E | Events], Send, Case, Calls, Nums, Acc) ->
                         list_to_integer(?b2l(BinInt));
                     [<<"(0">>,<<"seconds">>,<<"*">>,_Mult,<<"multiplier)">>] ->
                         %% Fail
-                        0
+                        0;
+                    [<<"infinity">>] ->
+                        infinity
                 end,
             NewCase =
                 case Case of
@@ -893,25 +912,33 @@ do_extract_timers([E | Events], Send, Case, Calls, Nums, Acc) ->
                                status = started,
                                elapsed_time = undefined};
                     #timer{} ->
+                        MaxTime = Case#timer.max_time,
+                        ElapsedMillis =
+                            if
+                                MaxTime =/= infinity andalso
+                                LeftMillis =/= infinity ->
+                                    MaxTime - LeftMillis;
+                                true ->
+                                    Case#timer.elapsed_time
+                            end,
                         Status =
                             if
                                 LeftMillis =< 0               -> failed;
                                 Case#timer.status =:= failed  -> failed;
                                 Case#timer.status =:= started -> matched
                             end,
-                        ElapsedMillis = Case#timer.max_time - LeftMillis,
                         Case#timer{status = Status,
                                    elapsed_time = ElapsedMillis}
                 end,
-            do_extract_timers(Events, Send, NewCase,
+            do_extract_timers(Events, Start, Send, NewCase,
                               Calls, Nums, Acc);
         #event{op = <<"send">>} ->
             NewSend = {E, Nums},
-            do_extract_timers(Events, NewSend, Case,
+            do_extract_timers(Events, Start, NewSend, Case,
                               Calls, Nums, Acc);
         #event{op = <<"start">>} ->
             NewSend = {E, Nums},
-            do_extract_timers(Events, NewSend, Case,
+            do_extract_timers(Events, Start, NewSend, Case,
                               Calls, Nums, Acc);
         #event{op = <<"expect", _/binary>>} ->
             {SendE, SendNums} = Send,
@@ -931,7 +958,7 @@ do_extract_timers([E | Events], Send, Case, Calls, Nums, Acc) ->
                 NewAcc ->
                     ok
             end,
-            do_extract_timers(Events, Send, Case,
+            do_extract_timers(Events, Start, Send, Case,
                               Calls, Nums, [T | NewAcc]);
         #event{op = <<"timer">>, data = [Data]} ->
             [T | NewAcc] = Acc,
@@ -939,40 +966,47 @@ do_extract_timers([E | Events], Send, Case, Calls, Nums, Acc) ->
                 {started, MaxTime} when T#timer.status =:= expected  ->
                     NewT = T#timer{max_time = MaxTime,
                                    status = started},
-                    do_extract_timers(Events, Send, Case,
+                    do_extract_timers(Events, Start, Send, Case,
                                       Calls, Nums, [NewT|NewAcc]);
                 {canceled, Elapsed} when T#timer.status =:= started ->
                     NewT = T#timer{status = matched,
                                    elapsed_time = Elapsed},
-                    do_extract_timers(Events, Send, Case,
+                    do_extract_timers(Events, Start, Send, Case,
                                       Calls, Nums, [NewT|NewAcc]);
                 {failed, Elapsed} when T#timer.status =:= started ->
                     NewT = T#timer{status = failed,
                                    elapsed_time = Elapsed},
-                    do_extract_timers(Events, Send, Case,
+                    do_extract_timers(Events, Start, Send, Case,
                                       Calls, Nums, [NewT|NewAcc])
             end;
         #event{op = <<"invoke_", Macro/binary>>} ->
             NewCalls = [Macro | Calls],
-            do_extract_timers(Events, Send, Case,
+            do_extract_timers(Events, Start, Send, Case,
                               NewCalls, Nums, Acc);
         #event{op = <<"exit_", Macro/binary>>} ->
             [Macro | NewCalls] = Calls,
-            do_extract_timers(Events, Send, Case,
+            do_extract_timers(Events, Start, Send, Case,
                               NewCalls, Nums, Acc);
         #event{} ->
-            do_extract_timers(Events, Send, Case,
+            do_extract_timers(Events, Start, Send, Case,
                               Calls, Nums, Acc);
         #body{events = EventsB} = B ->
             TmpNums = [B#body.invoke_lineno | Nums],
             {NewSend, NewCase, NewAcc} =
-                do_extract_timers(EventsB, Send, Case,
+                do_extract_timers(EventsB, Start, Send, Case,
                                   Calls, TmpNums, Acc),
-            do_extract_timers(Events, NewSend, NewCase,
+            do_extract_timers(Events, Start, NewSend, NewCase,
                               Calls, Nums, NewAcc)
     end;
-do_extract_timers([], Send, Case, _Calls, _Nums, Acc) ->
+do_extract_timers([], _Start, Send, Case, _Calls, _Nums, Acc) ->
     {Send, Case, Acc}.
+
+binary_time_to_xxx(Bin) ->
+    [Date, Time] = binary:split(Bin, <<" ">>, [global]),
+    [Year, Month, Day] = binary:split(Date, <<" ">>, [global]),
+    [Hour, Min, SecMicros] = binary:split(Time, <<":">>, [global]),
+    [Sec, Micros] = binary:split(SecMicros, <<".">>, [global]),
+    
 
 format_calls([<<>>], Acc) ->
     ?l2b(join("->", Acc));
@@ -1035,7 +1069,7 @@ timer_to_elems(#timer{send_lineno  = SendStack,
                       callstack    = Callstack,
                       max_time     = MaxTime,
                       status       = Status,
-                      elapsed_time = Elapsed}) ->
+                      elapsed_time = Elapsed}=T) ->
     [
      case SendStack of
          [] -> q("@0");
@@ -1053,6 +1087,9 @@ timer_to_elems(#timer{send_lineno  = SendStack,
          Elapsed =:= undefined,
          Status =:= started ->
              "";
+         Elapsed =:= undefined ->
+io:format("\nTTT ~p\n", [T]),
+             "?";
          is_integer(Elapsed),
          Status =/= started ->
              ?i2l(Elapsed)

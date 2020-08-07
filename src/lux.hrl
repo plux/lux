@@ -16,6 +16,7 @@
 
 -define(FF(Format, Args), io_lib:format(Format, Args)).
 -define(b2l(B), binary_to_list(B)).
+-define(b2i(B), binary_to_integer(B)).
 -define(l2b(L), iolist_to_binary(L)).
 -define(i2b(I), integer_to_binary(I)).
 -define(i2l(I), integer_to_list(I)).
@@ -55,6 +56,7 @@
 -define(DEFAULT_TIME_STR,   "yyyy-mm-dd hh:mm:ss").
 -define(ONE_SEC, 1000).
 -define(ONE_MIN, (?ONE_SEC*60)).
+-define(ONE_HOUR, (?ONE_MIN*60)).
 -define(ONE_SEC_MICROS, (?ONE_SEC*1000)).
 
 -define(EXPECTED_EQ, 'expected=').

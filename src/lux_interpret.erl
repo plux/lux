@@ -75,6 +75,8 @@ init(I) ->
     end.
 
 stop(I) ->
+    CaseRef = I#istate.case_timer_ref,
+    SuiteRef = I#istate.suite_timer_ref,
     ilog(I, "case_timeout ~s\n", [timer_left(CaseRef)], "lux", 0),
     ilog(I, "suite_timeout ~s\n", [timer_left(SuiteRef)], "lux", 0),
     lux_utils:cancel_timer(CaseRef),
