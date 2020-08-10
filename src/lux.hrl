@@ -56,7 +56,6 @@
 -define(DEFAULT_TIME_STR,   "yyyy-mm-dd hh:mm:ss").
 -define(ONE_SEC, 1000).
 -define(ONE_MIN, (?ONE_SEC*60)).
--define(ONE_HOUR, (?ONE_MIN*60)).
 -define(ONE_SEC_MICROS, (?ONE_SEC*1000)).
 
 -define(EXPECTED_EQ, 'expected=').

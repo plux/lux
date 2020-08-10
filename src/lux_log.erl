@@ -872,27 +872,29 @@ extract_timers(Events) ->
 do_extract_timers([E | Events], Start, Send, Case, Calls, Nums, Acc) ->
     case E of
         #event{op = <<"start_time">>} ->
-            NewStart = binary:split(?l2b(E#event.data), <<" ">>, [global]),
-            do_extract_timers(Events, NewStart, Send, Case, Calls, Nums, Acc);
+            do_extract_timers(Events, E, Send, Case, Calls, Nums, Acc);
         #event{op = <<"end_time">>} ->
-            if
-                Start =/= undefined,
-                Case#timer.max_time =:= infinity,
-                Case#timer.elapsed =:= undefined ->
-                    %% "2020-08-06 16:09:32.872350"
-                    End = binary:split(?l2b(E#event.data), <<" ">>, [global]),
-                        
-                    split(Case#timer.data)
-io:format("\nSSS ~p\n", [Start]),
-io:format("\nEEE ~p\n", [E]),
-io:format("\nCCC ~p\n", [Case]),
-            do_extract_timers(Events, Start, Send, Case, Calls, Nums, Acc);
+            StartMicros = binary_datetime_to_micros(Start#event.data),
+            EndMicros = binary_datetime_to_micros(E#event.data),
+            ElapsedMicros = EndMicros - StartMicros,
+            NewCase =
+                if
+                    Case#timer.max_time =:= infinity,
+                    Case#timer.elapsed_time =:= undefined ->
+                        Case2222;
+                    true ->
+                        Case
+                end,
+            do_extract_timers(Events, Start, Send, NewCase, Calls, Nums, Acc);
+
         #event{op = <<"case_timeout">>} ->
             LeftMillis =
                 case binary:split(?l2b(E#event.data), <<" ">>, [global]) of
                     [BinInt, <<"micros">>] ->
-                        list_to_integer(?b2l(BinInt));
-                    [<<"(0">>,<<"seconds">>,<<"*">>,_Mult,<<"multiplier)">>] ->
+                        ?b2i(BinInt);
+                    [<<"(0">>, <<"seconds">>,
+                     <<"*">>,
+                     _Mult, <<"multiplier)">>] ->
                         %% Fail
                         0;
                     [<<"infinity">>] ->
@@ -900,7 +902,7 @@ io:format("\nCCC ~p\n", [Case]),
                 end,
             NewCase =
                 case Case of
-                    undefined ->
+                    undefined -> %% assert
                         #timer{send_lineno = [E#event.lineno],
                                send_data = <<>>,
                                match_lineno = [E#event.lineno],
@@ -1001,12 +1003,19 @@ io:format("\nCCC ~p\n", [Case]),
 do_extract_timers([], _Start, Send, Case, _Calls, _Nums, Acc) ->
     {Send, Case, Acc}.
 
-binary_time_to_xxx(Bin) ->
+binary_datetime_to_micros(Bin) ->
+    %% "2020-08-06 16:09:32.872350"
     [Date, Time] = binary:split(Bin, <<" ">>, [global]),
-    [Year, Month, Day] = binary:split(Date, <<" ">>, [global]),
-    [Hour, Min, SecMicros] = binary:split(Time, <<":">>, [global]),
-    [Sec, Micros] = binary:split(SecMicros, <<".">>, [global]),
-    
+    [Years, Months, Days] = binary:split(Date, <<" ">>, [global]),
+    DateSecs = calendar:date_to_gregorian_days(?b2i(Years),
+                                               ?b2i(Months),
+                                               ?b2i(Days)),
+
+    [Hours, Mins, SecsAndMicros] = binary:split(Time, <<":">>, [global]),
+    [Secs, Micros] = binary:split(SecsAndMicros, <<".">>, [global]),
+    TimeSecs = (?b2i(Hours) * 60 * 60) + (?b2i(Mins)  * 60)  + ?b2i(Secs),
+    TotalSecs = DateSecs + TimeSecs,
+    (TotalSecs * ?ONE_SEC_MICROS) + Micros.
 
 format_calls([<<>>], Acc) ->
     ?l2b(join("->", Acc));
