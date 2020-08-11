@@ -879,9 +879,9 @@ do_extract_timers([E | Events], Start, Send, Case, Calls, Nums, Acc) ->
             ElapsedMicros = EndMicros - StartMicros,
             NewCase =
                 if
-                    Case#timer.max_time =:= infinity,
+                    %% Case#timer.max_time =:= infinity,
                     Case#timer.elapsed_time =:= undefined ->
-                        Case2222;
+                        CaseInfinity;
                     true ->
                         Case
                 end,
