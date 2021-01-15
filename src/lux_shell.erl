@@ -31,20 +31,22 @@ start_monitor(I, Cmd, Name, ExtraLogs) ->
                 log_fun = I#istate.log_fun,
                 event_log_fd = I#istate.event_log_fd,
                 log_prefix = Prefix,
+                emit_timestamp = I#istate.emit_timestamp,
                 multiplier = I#istate.multiplier,
-                poll_timeout = I#istate.poll_timeout,
-                flush_timeout = I#istate.flush_timeout,
-                match_timeout = I#istate.default_timeout,
-                case_timeout = I#istate.case_timeout,
                 suite_timeout = I#istate.suite_timeout,
+                case_timeout = I#istate.case_timeout,
+                flush_timeout = I#istate.flush_timeout,
+                poll_timeout = I#istate.poll_timeout,
+                match_timeout = I#istate.default_timeout,
+                risky_threshold = I#istate.risky_threshold,
+                sloppy_threshold = I#istate.sloppy_threshold,
                 shell_wrapper = I#istate.shell_wrapper,
                 shell_cmd = I#istate.shell_cmd,
                 shell_args = I#istate.shell_args,
                 shell_prompt_cmd = I#istate.shell_prompt_cmd,
                 shell_prompt_regexp = I#istate.shell_prompt_regexp,
                 loop_stack = I#istate.loop_stack,
-                debug_level = I#istate.debug_level,
-                emit_timestamp = I#istate.emit_timestamp},
+                debug_level = I#istate.debug_level},
     {Pid, Ref} = spawn_monitor(fun() -> init(C, ExtraLogs) end),
     Dpid = I#istate.debug_pid,
     Dpid ! {new_shell, self(), Name, Pid},
@@ -1305,6 +1307,8 @@ cancel_timer(#cstate{timer_ref = undefined} = C) ->
     C;
 cancel_timer(#cstate{timer_ref = TimerRef,
                      timer_started_at = Earlier,
+                     risky_threshold = RiskyThreshold,
+                     sloppy_threshold = SloppyThreshold,
                      warnings = OldWarnings} = C) ->
     ElapsedMicros = timer:now_diff(lux_utils:timestamp(), Earlier),
     clog(C, timer, "canceled (after ~p micro seconds)", [ElapsedMicros]),
@@ -1314,18 +1318,18 @@ cancel_timer(#cstate{timer_ref = TimerRef,
                 OldWarnings;
             _TimeLeftMillis ->
                 MaxMicros = TimerRef#timer_ref.timeout * 1000,
-                HighThresholdMicros =
-                    erlang:trunc(MaxMicros * ?HIGH_TIMER_THRESHOLD),
-                LowThresholdMicros =
-                    erlang:trunc(MaxMicros * ?LOW_TIMER_THRESHOLD),
+                RiskyMicros =
+                    erlang:trunc(MaxMicros * RiskyThreshold),
+                SloppyMicros =
+                    erlang:trunc(MaxMicros * SloppyThreshold),
                 if
-                    ElapsedMicros > HighThresholdMicros ->
-                        Percent = ?i2l(trunc(?HIGH_TIMER_THRESHOLD * 100)),
+                    ElapsedMicros > RiskyMicros ->
+                        Percent = ?i2l(trunc(RiskyThreshold * 100)),
                         W = make_warning(C, "Risky timer > " ++
                                              Percent ++ "% of max"),
                         [W | OldWarnings];
-                    ElapsedMicros < LowThresholdMicros ->
-                        PPB = ?i2l(trunc(?LOW_TIMER_THRESHOLD * 1000000000)),
+                    ElapsedMicros < SloppyMicros ->
+                        PPB = ?i2l(trunc(SloppyThreshold * 1000000000)),
                         W = make_warning(C, "Oversized timer < " ++
                                              PPB ++ " ppm of max"),
                         [W | OldWarnings];

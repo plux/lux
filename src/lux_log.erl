@@ -1408,8 +1408,8 @@ format_val_choice(Tag, Val, [Type | Types]) ->
         _Class:_Reason ->
             format_val_choice(Tag, Val, Types)
     end;
-format_val_choice(Tag, Val, []) ->
-    [lists:flatten(?FF("~s~w\n", [?TAG(Tag), Val]))].
+format_val_choice(_Tag, Val, []) ->
+    [lists:flatten(?FF("~w\n", [Val]))].
 
 try_format_val(_Tag, Val = undefined, _Type) ->
     [?a2l(Val)];
@@ -1424,6 +1424,11 @@ try_format_val(Tag, Val, Type) ->
         {integer, _Min, _Max} when is_integer(Val) ->
             [?i2l(Val)];
         {integer, _Min, _Max} when Val =:= infinity ->
+            [?a2l(Val)];
+        {float, _Min, _Max} when is_float(Val) ->
+            IoList = ?FF("~f", [Val]),
+            [string:strip(lists:flatten(IoList), right, $0)];
+        {float, _Min, _Max} when Val =:= infinity ->
             [?a2l(Val)];
         {std_list, SubTypes} ->
             [hd(format_val_choice(Tag, V, SubTypes)) || V <- Val];
