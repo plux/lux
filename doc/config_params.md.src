@@ -209,6 +209,10 @@ Skip unstable test cases. See `--unstable` and `--unstable_unless`.
 Forces Lux to not care about `--skip` and `--skip_unless` settings.
 Overrides `--skip_unstable`.
 
+**--fail\_when\_warning**  
+**--fail\_when\_warning=true**  
+Forces Lux to fail if there are any warnings.
+
 Log control
 -----------
 
@@ -301,6 +305,22 @@ wait in `PollTimeout` milli seconds for more output before it
 tries to match it against any [regular expression][]s. It defaults
 to `0`. If you want to experiment with it, `100` milli seconds
 (1/10 second) can be a resonable value.
+
+**--risky\_treshold RiskyThreshold**  
+An experimental timeout setting.
+By default Lux warns for risky timers. That is timers that are close
+to timeout. This may cause intermittent failures in future runs. By
+default it is set to `0.85` which means that 85% of the timer was
+used.
+
+**--sloppy\_treshold RiskyThreshold**  
+An experimental timeout setting.
+By default Lux warns for sloppy timers. That is timers where only a
+fraction of the timer is used. This may cause secondary problems. Such
+as test run abortions by Jenkins or similar systems. Such timers does
+are also rather inconvenient to debug as they may take hours to
+timeout.  By default it is set to `0.000000001` which means that only
+a ppm (parts per million) of the timer was used.
 
 History control
 ---------------
