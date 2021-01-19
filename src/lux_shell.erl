@@ -643,12 +643,13 @@ cleanup(C, _Type) ->
         false -> ok;
         true  -> clog(C3, break, "pattern reset", [])
     end,
-    C4 = C3#cstate{expected = undefined,
+    C4 = cancel_timer(C3),
+    C5 = C4#cstate{expected = undefined,
                    fail = undefined,
                    success = undefined,
                    loop_stack = LoopStack2},
-    dlog(C4, ?dmore, "expected=undefined (cleanup)", []),
-    opt_late_sync_reply(C4).
+    dlog(C5, ?dmore, "expected=undefined (cleanup)", []),
+    opt_late_sync_reply(C5).
 
 reset_output_buffer(C, Context) ->
     C2 = flush_port(C, []),
@@ -1451,17 +1452,18 @@ stop(C, Outcome0, Actual, PreEvents) when is_binary(Actual);
     %% io:format("\nRES ~p\n", [Res]),
     ?TRACE_ME2(40, C2#cstate.name, Outcome, [{actual, Actual}, Res]),
     %%  C3 = opt_late_sync_reply(C2#cstate{expected = undefined}),
-    C3 = C2#cstate{expected = undefined, actual = <<>>, mode = stop},
-    send_reply(C3, C3#cstate.parent, {stop, self(), Res}),
+    C3 = cancel_timer(C2),
+    C4 = C3#cstate{expected = undefined, actual = <<>>, mode = stop},
+    send_reply(C4, C4#cstate.parent, {stop, self(), Res}),
     if
         Outcome =:= shutdown ->
-            port_close_and_exit(C3, Outcome, Res);
+            port_close_and_exit(C4, Outcome, Res);
         Outcome =:= error ->
-            port_close_and_exit(C3, {error, Actual}, Res);
+            port_close_and_exit(C4, {error, Actual}, Res);
         true ->
             %% Wait for potential cleanup to be run
             %% before we close the port
-            wait_for_down(C3, Res)
+            wait_for_down(C4, Res)
     end.
 
 clog_stack(#cstate{orig_file = File,
@@ -1551,10 +1553,11 @@ logs_close_and_exit(C, IE) when element(1, IE) =:= internal_error ->
     Skip = C2#cstate.actual,
     SkipEvent = {skip, "\"~s\"", [lux_utils:to_string(Skip)]},
     clog(C2,[SkipEvent, CloseEvent]),
-    C3 = C2#cstate{expected = undefined},
-    C4 = close_logs(C3),
-    send_reply(C4, C4#cstate.parent, {stop, self(), Res}),
-    port_close_and_exit(C4, shutdown, Res).
+    C3 = cancel_timer(C2),
+    C4 = C3#cstate{expected = undefined},
+    C5 = close_logs(C4),
+    send_reply(C5, C5#cstate.parent, {stop, self(), Res}),
+    port_close_and_exit(C5, shutdown, Res).
 
 error_to_result(C, IE) ->
     Cmd = element(3, IE),
