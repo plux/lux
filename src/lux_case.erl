@@ -313,10 +313,6 @@ config_type(Name) ->
             {ok, #istate.flush_timeout, [{integer, 0, infinity}]};
         poll_timeout ->
             {ok, #istate.poll_timeout, [{integer, -1, infinity}]};
-        risky_threshold ->
-            {ok, #istate.risky_threshold, [{float, 0.0, infinity}]};
-        sloppy_threshold ->
-            {ok, #istate.sloppy_threshold, [{float, 0.0, infinity}]};
         timeout ->
             {ok, #istate.default_timeout, [{integer, 0, infinity},
                                            {atom, [infinity]}]};
