@@ -1,0 +1,128 @@
+Hardening test cases
+====================
+
+**?**  
+
+Remove all usage of empty `?` commands. This command empties the
+output streams (`stdout`, `stderr`). Already received output is
+discarded. This is a **very error prone** command which easily may
+cause race conditions and intermittent fails. The command is kept for
+backwards compatibility but should really not be used. It is a very
+good candidate for deprecation.
+
+Do also look out for unintended emtying of the output streams. Ensure
+that there are no `Empty multi-line expect command` warnings.
+
+**[sleep XXX]**  
+
+Remove all usage of sleep commands. This is a **very error prone**
+command which easily may cause race conditions and intermittent
+fails. In rare situations it may be valid to sleep a while to ensure
+proper timing. But it should **never** be used as a safety action when
+it is hard to find proper synchronization points. Such usage is error
+prone.
+
+**?SH-PROMPT:**  
+
+Always match on prompts. Especially when multiple commands are
+executed it is important to have well defined synchronization points
+to avoid sending input when the system under test not is ready for it
+yet. It is very easy to end up with intermittent problems when not
+matching on all prompts. Further it can be very confusing when
+performing post mortem analyzis of failing scripts, possibly comparing
+successful runs with failing dito.
+
+**make < /dev/null**  
+
+Some commands sent to the system under test may read from `stdin`. To
+suppress this behaviour the `/dev/null` can be piped to their `stdin`
+to take care of that. The Java build system `ant` is known for this
+unwanted behaviour. It can be extreamely frustrating to find out that
+this is the problem. Often this problem occur in conjunction with poor
+synchronization points. Proper matching of prompts (mentioned above)
+can avoid this problem altogether, making the tests more robust
+avoiding intermittent race condition related problems.
+
+**Fix all timer related warnings**  
+
+Once all timers have been adjusted to get rid of the timer related
+warnings it is time to harden the script even further by setting some
+configuration parameters to more challanging values. For example
+
+        --risky_threshold=0.60
+        --sloppy_threshold=0.000001
+
+**Change the timing of the scripts**  
+
+Use the `--flush_timeout` to cause test cases with active
+fail_patterns to fail when the `[cleanup]` section is entered. The
+effect is similar to adding a `[sleep XXX]` just before `[cleanup]`.
+Default is `--flush_timeout=0`. Start with `--flush_timeout=100` to
+ultimately use `--flush_timeout=1000`. The `--flush_timeout` is used
+to control how long Lux should wait for more output before
+(automatically) resetting the fail pattern when entering zombie
+mode. Resetting the fail pattern implies a final try to match the
+pattern before it is actually reset. Besides finding out poorly
+written scripts it may be useful with a long(er) setting to see more
+output during post mortem analyzis.
+
+The `--poll_timeout` controls how long Lux should wait for more output
+from a shell. Shells produces output in many small chunks. When the
+first chunk is received Lux looks for consecutive chunks merging them
+together into a bigger chunk before trying to match the new
+data. Using a `--poll_timeout` bigger than 0 (milli seconds) increases
+the receive window causing more data to be collected before trying to
+match the regexps. This typically can cause scripts with poor
+synchronization points to fail.
+
+Default is `--poll_timeout=0`. It reasonable to try with
+`--poll_timeout=10` and when the scripts are adjusted to cope with
+this setting it may be time to use the more challanging value`
+--poll_timeout=100`.
+
+The special value `--poll_timeout=-1` causes Lux to not wait for
+consecutive chunks at all before trying to match the regexps. After an
+unsuccessful match Lux is looking for next small chunk of data. This
+setting may catch open ended regexps. That is regexps ending with a
+variable sized pattern (such as `.*`). An open ended regexp will in
+some runs match more data than in others. This can cause strange
+intermittent problems.
+
+**[cleanup]**  
+
+It is good hygiene to ensure that each test case does not affect the
+outcome of other test cases. Respect your collegues by not making your
+test cases to cause theirs to fail.
+
+Use the `[cleanup]` section to cleanup side-effects that may affect
+consecutive test cases.
+
+It is safe to assume that the cleanup code always is run. If there is
+a need to abort a run do never use control-c to abort. Enter the
+commande `q` or `quit` in the Lux debugger instead to abort the test
+case in a controlled manner by executing the cleanup code. `q s` or
+`quit suite` may be used to safely abort all test cases int the suite.
+
+In order to be able to perform post mortem analyzis some side effects
+needs to be kept. But ensure that these do not affect subsequent test
+cases. A god praxis is to copy logs, and what not, to the directory
+named in the environment variable `LUX_EXTRA_LOGS`. Each test case gets
+its unique directory path in the variable. Your script need to create
+the directory if it is needed. The extra logs are kept among the other
+Lux logs.
+
+Do also run test cases multiple times without any `make clean` in
+between. This is to ensure that possible resets in the beginning of
+the test case works as intended. It can be very confusing to run
+other peoples test cases when they only work once.
+
+**[config unstable=XXX]**  
+**[config unstable_less=XXX]**  
+
+Respect your collegues by withdrawing your intermittently failing test
+cases from the test results of the group. Use these constructs to mark
+those test cases as unstable. They will then be run but only cause a
+warning if they fail.
+
+        [config unstable=XXX]
+        [config unstable_less=XXX]

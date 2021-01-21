@@ -1334,7 +1334,7 @@ cancel_timer(#cstate{timer_ref = TimerRef,
                         [W | OldWarnings];
                     ElapsedMicros < SloppyMicros ->
                         PPB = ?i2l(trunc(SloppyThreshold * 1000000000)),
-                        W = make_warning(C, "Oversized timer < " ++
+                        W = make_warning(C, "Sloppy timer < " ++
                                              PPB ++ " ppm of max"),
                         [W | OldWarnings];
                     true ->
