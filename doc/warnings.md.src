@@ -79,6 +79,28 @@ short form (?) of the command for clarity. Avoiding this (mis)feature
 is however the best solution. At a first look it seems more useful
 than it is. It often causes unexpected race patterns.
 
+**Warning: Empty send command**
+
+As you probably have concluded, both
+
+
+        """~
+        """
+
+and
+
+        """~
+
+        """
+
+are equivalent to
+
+        ~
+
+which effectively is a no-op, which most likely is unintended. The
+latter is reported as this particular warning, while the first two are
+reported as a `*Warning: Empty multi-line send command` warning.
+
 **Warning: Macro name contains whitespace**  
 
 The whitespaces should be removed from the macro name in order to
