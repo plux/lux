@@ -116,6 +116,23 @@ between. This is to ensure that possible resets in the beginning of
 the test case works as intended. It can be very confusing to run
 other peoples test cases when they only work once.
 
+**Compensate for timing diferences on hetrogenous hardware**  
+
+The `--multiplier` setting is intended to be used to handle the
+problem with hetrogenous hardware where some machines are faster than
+others. The `[timout XXX]` used in the scripts can work well on one
+machine but cause the script to fail on another. Instead of boosting
+the timeout for all machines the `--multiplier` can be used. By
+default it is set to 1000 meaning that `[timeout 42]` actually is 42
+seconds. Perhaps it is easier to think in milli seconds. 42 means
+42*1000=42000 milli seconds. By changing the multiplier to a higher
+value, such as 3000, will cause Lux to use longer timeouts. E.g.
+42*3000=126000 milli seconds.
+
+This should be done in the architecture specific `.luxcfg` config
+files or in a host specific `.luxcfg` config file. By doing this there
+will be adapted timers per architecture or per host.
+
 **[config unstable=XXX]**  
 **[config unstable_less=XXX]**  
 
