@@ -2,33 +2,28 @@ Warnings
 ========
 
 Lux emits various warnings. Some are built-in and others are
-configurable. It is also possible to make a run fail if there are any
-warnings. This is achieved by setting the configuration parameter
+configurable. Here follows a few configuration pararamenters that may
+be useful in this context:
 
-        --fail_when_warning
+**--fail\_when\_warning**  
+is used to make a run fail if there are any warnings.
 
-Beside executing tests it is possible to do an off-line run which only
-validates the scripts and emits some warnings. This is achieved with
+**--mode=validate**  
+is used to validate the scripts and display some warnings. The scripts
+are not executed.
 
-        --mode=validate
+**--skip_skip**  
+causes all skip statements to be ignored. The skip statements are
+mainly used to handle architecture specific quirks and are not really
+applicable during validation.
 
-for entire test suites. Observe that you probably should combine that
-with
+**--mode=dump**  
+displays the internal form of the main script and its include files as
+well as warnings.
 
-        --skip_skip
-
-to validate scripts that normally are skipped.
-
-This one displays the internal form of the main script and its include
-files as well as warnings
-
-        --mode=dump
-
-If you only are interested of inspecting the source code of the script
-and its include files, this setting may help you to locate where
-macros and stuff are defined.
-
-        --mode=expand
+**--mode=expand**  
+expands the source code of the script and its include files, this
+setting may help you to locate where macros and stuff are defined.
 
 Warnings emitted during validation
 ----------------------------------
@@ -54,7 +49,7 @@ those constructions are equivalent to
         !
 
 which means that only one single newline is sent. Use the short form
-(!) of the command for clarity. An even worse use of empty multi-line
+`!` of the command for clarity. An even worse use of empty multi-line
 commands is
 
 
@@ -75,7 +70,7 @@ which is equivalent to
 expect command is in fact a command which empties the output streams
 (`stdout`, `stderr`). Already received output is discarded. If this is
 the intended behaviour it should definitely be rewritten to use the
-short form (?) of the command for clarity. Avoiding this (mis)feature
+short form `?` of the command for clarity. Avoiding this (mis)feature
 is however the best solution. At a first look it seems more useful
 than it is. It often causes unexpected race patterns.
 
