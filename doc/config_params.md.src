@@ -260,14 +260,14 @@ Timeouts
 The script expects the shell output to match given
 [regular expression][]s. But the output must be received within a
 given time limit. The `Timeout` specifies how long it will wait before
-the script fails. The `Timeout` defaults to `10000` milli seconds
+the script fails. The `Timeout` defaults to `10000` milliseconds
 (`10` seconds). This `Timeout` can be overridden by the statement
 `[timeout Timeout]` in the script itself.
 
 **--cleanup\_timeout CleanupTimeout**  
 When the script reaches the `[cleanup]` marker, the ordinary
 `Timeout` will be set to `CleanupTimeout`. The `CleanupTimeout`
-defaults to `100000` milli seconds (`100` seconds).
+defaults to `100000` milliseconds (`100` seconds).
 
 **--multiplier Multiplier**  
 In order to be able to run the tests on very slow hardware,
@@ -281,12 +281,12 @@ specific files to provide different settings on different systems.
 **--suite\_timeout SuiteTimeout**  
 If the duration of the execution exceeds the `SuiteTimeout`, it
 is aborted. The `SuiteTimeout` defaults to `infinity`, but can
-be any positive integer value in the unit of milli seconds.
+be any positive integer value in the unit of milliseconds.
 
 **--case\_timeout CaseTimeout**  
 If the the duration of a single test case exceeds the
 `CaseTimeout`, it is aborted. It can be any positive integer
-value in the unit of milli seconds or `infinity`. The default
+value in the unit of milliseconds or `infinity`. The default
 is `300000` (5 minutes).
 
 **--flush\_timeout FlushTimeout**  
@@ -296,29 +296,29 @@ All output from a shell is buffered and matched against
 the script. When this is done, the engine first waits a while
 before it discards the output. How long it waits is controlled
 by `FlushTimeout`. It defaults to `0`. If you want to experiment
-with it, `1000` milli seconds (1 second) can be a resonable value.
+with it, `1000` milliseconds (1 second) can be a resonable value.
 
 **--poll\_timeout PollTimeout**  
 An experimental timeout setting.
 When the Lux engine receives output from a shell it will
-wait in `PollTimeout` milli seconds for more output before it
+wait in `PollTimeout` milliseconds for more output before it
 tries to match it against any [regular expression][]s. It defaults
-to `0`. If you want to experiment with it, `100` milli seconds
+to `0`. If you want to experiment with it, `100` milliseconds
 (1/10 second) can be a resonable value.
 
-**--risky\_treshold RiskyThreshold**  
+**--risky\_threshold RiskyThreshold**  
 An experimental timeout setting.
-By default Lux warns for risky timers. That is timers that are close
+By default Lux warns for risky timers, i.e. timers that are close
 to timeout. This may cause intermittent failures in future runs. By
 default it is set to `0.85` which means that 85% of the timer was
 used.
 
-**--sloppy\_treshold RiskyThreshold**  
+**--sloppy\_threshold RiskyThreshold**  
 An experimental timeout setting.
-By default Lux warns for sloppy timers. That is timers where only a
-fraction of the timer is used. This may cause secondary problems. Such
-as test run abortions by Jenkins or similar systems. Such timers does
-are also rather inconvenient to debug as they may take hours to
+By default Lux warns for sloppy timers, i.e. timers where only a very
+small part of the timer is used. This may cause secondary problems,
+e.g. test run abortions by Jenkins or similar systems. Such timers
+does are also rather inconvenient to debug as they may take hours to
 timeout.  By default it is set to `0.000000001` which means that only
 a ppm (parts per million) of the timer was used.
 

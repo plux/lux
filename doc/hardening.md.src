@@ -11,7 +11,13 @@ backwards compatibility but should really not be used. It is a very
 good candidate for deprecation.
 
 Do also look out for unintended emtying of the output streams. Ensure
-that there are no `Empty multi-line expect command` warnings.
+that there are no `Empty multi-line expect command` warnings. E.g.
+
+        """?
+
+        """
+
+is such an occurrence.
 
 **[sleep XXX]**  
 
@@ -22,25 +28,30 @@ proper timing. But it should **never** be used as a safety action when
 it is hard to find proper synchronization points. Such usage is error
 prone.
 
-**?SH-PROMPT:**  
+**Prompt synchronization**  
 
-Always match on prompts. Especially when multiple commands are
-executed it is important to have well defined synchronization points
-to avoid sending input when the system under test not is ready for it
-yet. It is very easy to end up with intermittent problems when not
-matching on all prompts. Further it can be very confusing when
-performing post mortem analyzis of failing scripts, possibly comparing
-successful runs with failing dito.
+Always match on prompts, e.g. `?SH-PROMPT:`. Especially when multiple
+commands are executed it is important to have well defined
+synchronization points to avoid sending input when the system under
+test not is ready for it yet. It is very easy to end up with
+intermittent problems when not matching on all prompts. Further it can
+be very confusing when performing post mortem analyzis of failing
+scripts, possibly comparing successful runs with failing dito.
+
+It may even be the case that different environments might have so
+different properties that a success/failure on one platform can be a
+failure/success on another and that missing prompt synchronisation is
+the cause for this.
 
 **make < /dev/null**  
 
 Some commands sent to the system under test may read from `stdin`. To
 suppress this behaviour the `/dev/null` can be piped to their `stdin`
 to take care of that. The Java build system `ant` is known for this
-unwanted behaviour. It can be extreamely frustrating to find out that
-this is the problem. Often this problem occur in conjunction with poor
-synchronization points. Proper matching of prompts (mentioned above)
-can avoid this problem altogether, making the tests more robust
+unwanted behaviour. It can be extremely frustrating to find out that
+this is the problem. Often this problem occurs in conjunction with
+poor synchronization points. Proper matching of prompts (mentioned
+above) can avoid this problem altogether, making the tests more robust
 avoiding intermittent race condition related problems.
 
 **Fix all timer related warnings**  
@@ -70,7 +81,7 @@ The `--poll_timeout` controls how long Lux should wait for more output
 from a shell. Shells produces output in many small chunks. When the
 first chunk is received Lux looks for consecutive chunks merging them
 together into a bigger chunk before trying to match the new
-data. Using a `--poll_timeout` bigger than 0 (milli seconds) increases
+data. Using a `--poll_timeout` bigger than 0 (milliseconds) increases
 the receive window causing more data to be collected before trying to
 match the regexps. This typically can cause scripts with poor
 synchronization points to fail.
@@ -83,7 +94,7 @@ this setting it may be time to use the more challanging value`
 The special value `--poll_timeout=-1` causes Lux to not wait for
 consecutive chunks at all before trying to match the regexps. After an
 unsuccessful match Lux is looking for next small chunk of data. This
-setting may catch open ended regexps. That is regexps ending with a
+setting may catch open ended regexps, i.e. regexps ending with a
 variable sized pattern (such as `.*`). An open ended regexp will in
 some runs match more data than in others. This can cause strange
 intermittent problems.
@@ -107,7 +118,7 @@ In order to be able to perform post mortem analyzis some side effects
 needs to be kept. But ensure that these do not affect subsequent test
 cases. A god praxis is to copy logs, and what not, to the directory
 named in the environment variable `LUX_EXTRA_LOGS`. Each test case gets
-its unique directory path in the variable. Your script need to create
+its unique directory path in the variable. Your script needs to create
 the directory if it is needed. The extra logs are kept among the other
 Lux logs.
 
@@ -120,14 +131,14 @@ other peoples test cases when they only work once.
 
 The `--multiplier` setting is intended to be used to handle the
 problem with hetrogenous hardware where some machines are faster than
-others. The `[timout XXX]` used in the scripts can work well on one
+others. The `[timeout XXX]` used in the scripts can work well on one
 machine but cause the script to fail on another. Instead of boosting
 the timeout for all machines the `--multiplier` can be used. By
 default it is set to 1000 meaning that `[timeout 42]` actually is 42
-seconds. Perhaps it is easier to think in milli seconds. 42 means
-42*1000=42000 milli seconds. By changing the multiplier to a higher
+seconds. Perhaps it is easier to think in milliseconds. 42 means
+42*1000=42000 milliseconds. By changing the multiplier to a higher
 value, such as 3000, will cause Lux to use longer timeouts. E.g.
-42*3000=126000 milli seconds.
+42*3000=126000 milliseconds.
 
 This should be done in the architecture specific `.luxcfg` config
 files or in a host specific `.luxcfg` config file. By doing this there
